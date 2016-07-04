@@ -30,6 +30,39 @@
   - `min-caml`の実装とか
   - これ多相性ないけど残った型変数を多相型にしちゃえばいい
 
+### 実装
+
+`min-caml`でやっていることの焼きまし簡略版だよ〜
+
+``` ocaml
+type t = Int | Arrow of t * t | Var of t option ref;;
+
+let gentyp () = Var (ref None);;
+
+let rec unify a b = match a, b with
+  | Int, Int -> ()
+  | Arrow (s, t), Arrow (u, v) -> begin unify s u; unify t v end
+  | Var ({contents = None} as r), _ | _, Var ({contents = None} as r) -> begin
+      r := Some b
+    end
+  | Var ({contents = Some c}), _ -> unify c b
+  | _, Var ({contents = Some c}) -> unify a c
+  | _ -> failwith "unify"
+
+(*
+    utop[16]> let t = gentyp ();;
+    val t : t = Var {contents = None}
+    utop[17]> unify t (Arrow (gentyp (), Int));;
+    - : unit = ()
+    utop[18]> t;;
+    - : t = Var {contents = Some (Arrow (Var {contents = None}, Int))}
+    utop[19]> unify t (Arrow (Int, Int));;
+    - : unit = ()
+    utop[20]> t;;
+    - : t = Var {contents = Some (Arrow (Var {contents = Some Int}, Int))}
+*)
+```
+
 ### min-camlの実装を読みましょう
 
 - [type.ml](https://github.com/esumii/min-caml/blob/master/type.ml)
