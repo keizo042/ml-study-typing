@@ -10,7 +10,7 @@
 数学的なアプローチ
 
 - Constraint Typingをやって制約を集めてくる
-  [./const_typing.jpg]
+  ![成約型付け](./const_typing.jpg)
 - HindleyとMilnerのUnificationアルゴリズムで制約を解く
 
 ### 実際にやってみよう
