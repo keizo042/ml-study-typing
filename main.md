@@ -39,15 +39,30 @@ type t = Int | Arrow of t * t | Var of t option ref;;
 
 let gentyp () = Var (ref None);;
 
+exception Unify of t * t
+
+let rec occur r = function
+| Int -> false
+| Arrow (t1, t2) -> occur r t1 || occur r t2
+| Var r' when r == r' -> true
+| Var {contents = None} -> false
+| Var {contents = Some t} -> occur r t
+
 let rec unify a b = match a, b with
-  | Int, Int -> ()
-  | Arrow (s, t), Arrow (u, v) -> begin unify s u; unify t v end
-  | Var ({contents = None} as r), _ | _, Var ({contents = None} as r) -> begin
-      r := Some b
-    end
-  | Var ({contents = Some c}), _ -> unify c b
-  | _, Var ({contents = Some c}) -> unify a c
-  | _ -> failwith "unify"
+| Int, Int -> ()
+| Var s, Var t when s == t -> ()
+| Arrow (s, t), Arrow (u, v) -> begin unify s u; unify t v end
+| Var ({contents = None} as r), _  -> begin
+    if occur r b then raise (Unify (a, b)) else
+    r := Some b
+end
+| _, Var ({contents = None} as r) -> begin
+    if occur r a then raise (Unify (a, b)) else
+    r := Some b
+  end
+| Var ({contents = Some c}), _ -> unify c b
+| _, Var ({contents = Some c}) -> unify a c
+| _ -> raise (Unify (a, b))
 
 (*
     utop[16]> let t = gentyp ();;
@@ -72,11 +87,11 @@ let rec unify a b = match a, b with
 
 - 現実のプログラミング言語にはもっと豊かな型が必要
   - レコード、タプルとか
+  - 多相性（！）
   - オブジェクト
   - 第一級モジュール
   - GADT
   - `-rectypes`のrecursive types (!)
-
 
 ``` ocaml
 [~/] ocaml -rectypes
@@ -85,6 +100,15 @@ let rec unify a b = match a, b with
 
 ```
 
+### 多相性があると
+
+型変数をgeneralizeする必要がある  
+`let a = b in e`で、aの型付けが終わった時に制約がない型変数を  
+generalizeしてforallをつける
+
+問題:  
+関数がネストするときに、どの変数をgeneralizeしていいのか  
+わからなくなる
 
 ### 現実の実装
 
