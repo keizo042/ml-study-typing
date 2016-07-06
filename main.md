@@ -30,7 +30,7 @@
   - `min-caml`の実装とか
   - これ多相性ないけど残った型変数を多相型にしちゃえばいい
 
-### 実装
+### 実装: unify
 
 `min-caml`でやっていることの焼きまし簡略版だよ〜
 
@@ -78,10 +78,80 @@ end
 *)
 ```
 
+### 実装: プログラミング言語に型付け
+
+let式、int型の定数、変数、足し算、匿名関数、関数適用しかない言語
+
+``` ocaml
+(* 言語の定義 *)
+type term =
+| Const of int | Plus of term * term
+| Let of string * term * term | Var of string
+| Fun of string * term
+| App of term * term
+
+(* let式の型付け *)
+exception Typing of term
+
+let rec follow = function
+| Int -> Int
+| Arrow _ as self -> self
+| Var {contents = None} as self -> self
+| Var {contents = Some t} -> follow t
+
+let rec typing env t = match t with
+  | Const _ -> Int
+  | Plus (a, b) -> begin unify Int (typing env a); unify Int (typing env b); Int end
+  | Let (v, s, t) -> typing ((v, typing env s) :: env) t
+  | Fun (v, t) ->
+    let arg = gentyp () in
+    let ret = typing ((v, arg) :: env) t in
+    Arrow (arg, ret)
+  | Var s -> begin try List.assoc s env with Not_found -> raise (Typing t) end
+  | App (a, b) -> begin
+      let body_typ = typing env a in
+      let arg_typ = typing env b in
+      match body_typ with
+      | Arrow (t1, t2) -> unify t2 arg_typ; t2
+      | _ -> raise (Typing t)
+    end
+
+```
+
 ### min-camlの実装を読みましょう
 
 - [type.ml](https://github.com/esumii/min-caml/blob/master/type.ml)
 - [typing.ml](https://github.com/esumii/min-caml/blob/master/typing.ml)
+
+### 多相性があると
+
+型変数をgeneralizeする必要がある  
+`let a = b in e`で、aの型付けが終わった時に制約がない型変数を  
+generalizeしてforallをつける
+
+``` ocaml
+let f = fun (x:'a) -> x in
+(f 1, f "SML")
+
+```
+[./pic6.png]
+
+
+### 問題
+
+問題:  
+関数がネストするときに、どの変数をgeneralizeしていいのか  
+わからなくなる
+
+``` ocaml
+(* f : 'a -> 'a *)
+
+let f (x:'a) = 
+  let g (y:'b) = x in
+  (* ここを抜けた時に'bはgeneralizeされるべきだけど
+     'aはまだ。どうやって効率よくエンコードする？ *)
+  g 12
+```
 
 ### さて現実
 
@@ -97,18 +167,8 @@ end
 [~/] ocaml -rectypes
         OCaml version 4.02.3
 # let rec f x = f f;;`
-
+val f : 'a -> 'b as 'a = <fun>
 ```
-
-### 多相性があると
-
-型変数をgeneralizeする必要がある  
-`let a = b in e`で、aの型付けが終わった時に制約がない型変数を  
-generalizeしてforallをつける
-
-問題:  
-関数がネストするときに、どの変数をgeneralizeしていいのか  
-わからなくなる
 
 ### 現実の実装
 
