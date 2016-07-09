@@ -12,7 +12,14 @@ OCamlの型推論アルゴリズムをみていくよ
 - 基本的な型推論
 - 副作用を入れたバージョン
 - Level-Basedな型推論アルゴリズム
-- 
+- コードリーディング
+
+### 自己紹介
+
+- インターネットの闇
+- でもインターネットにつながらないサーバに苦しんでる
+
+![アイコン](./icon.jpg)
 
 ### TAPLにのってる実装
 
@@ -124,7 +131,6 @@ let rec typing env t = match t with
       | Arrow (t1, t2) -> unify t2 arg_typ; t2
       | _ -> raise (Typing t)
     end
-
 ```
 
 ### min-camlの実装を読みましょう
@@ -192,11 +198,9 @@ val f : 'a -> 'b as 'a = <fun>
 
 ### Level-basedな型推論アルゴリズム
   - Remmyさんが考えてOlegさんがドキュメント化している  
-  [How OCaml type checker works --  
-   or what polymorphism and garbage collection have in common](http://okmij.org/ftp/ML/generalization.html)  
+  [How OCaml type checker works -- or what polymorphism and garbage collection have in common](http://okmij.org/ftp/ML/generalization.html)  
     型変数のGeneralizationはコストがかかるからこれを高速化する  
   
-
 ### 原理
 
 ``` ocam
@@ -209,3 +213,15 @@ let f (x:1) = ;; level = 1
 
 - `let x = e1 in e2`のe1の推論をし始める時にLevelを上げる
 - `e2`の推論をし始める時にレベルを戻す
+
+### あとはコードを読みます
+
+- begin_def, end_def  
+  Levelの上げ下げ
+- mark_type, unmark_type  
+  再帰しているかもしれない型の探索のために  
+  サーチ済みの型のコンストラクタに印をつけるよ！Levelにな！！！！
+- type_let  
+  まともな部分も読んでみましょう
+- type_expression  
+  型付けの本体部分
